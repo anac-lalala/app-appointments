@@ -1,32 +1,150 @@
 # Plan de Implementacion MVP - Gestion de Citas
 
-## 1. Resumen ejecutivo
+Este documento sirve para dos objetivos:
 
-Estrategia recomendada: construir el MVP por vertical slices sobre una base tecnica minima estable. El objetivo es entregar valor usable en cada fase, reducir riesgo de integracion y evitar sobreingenieria.
+1. empezar el proyecto sin bloqueos tecnicos
+2. entender que se construye primero, por que y como validar avance
 
-Flujos que se deben cerrar de punta a punta:
+La idea es evitar un roadmap abstracto. Cada fase tiene un resultado visible y un criterio claro de cierre.
 
-- login OTP completo
-- gestion de servicios por admin
-- reserva de cita por cliente
-- operacion de citas por admin
+## 1. Entender el sistema: que es y por que esta diseno
 
-## 2. Enfoque de implementacion
+### Que sistema estamos construyendo
 
-Se utiliza un enfoque mixto:
+MVP para un solo negocio de citas con dos actores:
 
-- base corta por capas para habilitar estandares comunes
-- ejecucion por vertical slices para entregar valor temprano
+- administrador: crea servicios, define disponibilidad, confirma/cancela citas
+- cliente: inicia sesion por OTP, ve servicios y horarios, reserva cita
 
-Por que este enfoque:
+### Por que esta arquitectura
 
-- minimiza bloqueos frontend/backend
-- integra contratos y reglas reales desde temprano
-- permite demos funcionales por fase
+Se usa monolito modular porque:
 
-## 3. Fuentes de verdad transversales
+- permite entregar rapido sin complejidad de microservicios
+- mantiene limites claros entre dominios (auth, services, availability, appointments)
+- facilita evolucion futura sin rehacer todo
 
-Valores operativos que deben permanecer consistentes en todos los docs:
+Stack base:
+
+- frontend: Next.js App Router + TypeScript + Tailwind
+- backend: FastAPI async + SQLAlchemy async + Alembic
+- base de datos: PostgreSQL
+- auth: OTP por email + JWT
+- infraestructura: Docker Compose para desarrollo
+
+## 2. Requisitos previos
+
+### Opcion A - Con Docker (recomendada)
+
+- Docker instalado y corriendo
+- Docker Compose v2
+- Git
+
+### Opcion B - Sin Docker
+
+- Python 3.11+
+- PostgreSQL 14+
+- Node.js 18+
+- npm o pnpm
+- Git
+
+Verificar herramientas:
+
+```bash
+docker --version
+docker compose version
+python --version
+node --version
+npm --version
+```
+
+## 3. Arranque del proyecto
+
+### Opcion A - Arranque con Docker (recomendada)
+
+Paso 1 - Crear archivo de entorno:
+
+```bash
+cp .env.example .env
+```
+
+Si no existe `.env.example`, crear `.env` manualmente con este minimo:
+
+```env
+# Database
+POSTGRES_DB=citas
+POSTGRES_USER=citas
+POSTGRES_PASSWORD=devpass
+DATABASE_URL=postgresql+asyncpg://citas:devpass@db:5432/citas
+
+# JWT
+JWT_SECRET_KEY=change-this-in-prod
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRES_MINUTES=30
+
+# OTP
+OTP_TTL_SECONDS=300
+OTP_MAX_ATTEMPTS=5
+OTP_REQUEST_RATE_LIMIT_PER_IP=10/15m
+OTP_REQUEST_RATE_LIMIT_PER_EMAIL=5/h
+
+# SMTP
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@example.com
+SMTP_PASSWORD=app-password
+SMTP_FROM_EMAIL=your-email@example.com
+
+# CORS
+CORS_ALLOWED_ORIGINS=["http://localhost:3000"]
+```
+
+Paso 2 - Levantar servicios:
+
+```bash
+docker compose up -d
+```
+
+Paso 3 - Ejecutar migraciones:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+Paso 4 - Verificar salud basica:
+
+```bash
+curl http://localhost:8000/health/live
+curl http://localhost:8000/health/ready
+```
+
+### Opcion B - Arranque sin Docker
+
+Paso 1 - Backend:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Paso 2 - Frontend:
+
+```bash
+npm install
+npm run dev
+```
+
+Paso 3 - Validar:
+
+- frontend en `http://localhost:3000`
+- backend en `http://localhost:8000`
+
+## 4. Invariantes tecnicos (no negociables)
+
+Estos valores deben ser iguales en codigo, API, seguridad y docs:
 
 - OTP TTL: 5 minutos
 - OTP max intentos por challenge: 5
@@ -34,372 +152,244 @@ Valores operativos que deben permanecer consistentes en todos los docs:
 - OTP rate limit por IP: 10 requests por 15 minutos
 - OTP rate limit por email: 5 requests por hora
 - JWT access token: 30 minutos
-- auth frontend: cookie HttpOnly + Secure + SameSite=Lax
+- storage de auth frontend: cookie HttpOnly + Secure + SameSite=Lax
 
-## 4. Roadmap por fases (0-6)
+## 5. Estrategia de implementacion
 
-1. Fase 0: setup base
-2. Fase 1: autenticacion OTP
-3. Fase 2: servicios
-4. Fase 3: disponibilidad
-5. Fase 4: reservas
-6. Fase 5: panel admin de citas
-7. Fase 6: endurecimiento
+Se construye por vertical slices sobre una base corta por capas.
 
-## 5. Entregables por fase
+Por que:
+
+- muestra valor funcional pronto
+- reduce bloqueos entre frontend y backend
+- detecta problemas reales (auth, concurrencia, estados) antes
+
+Regla de coordinacion por slice:
+
+1. backend congela contrato minimo
+2. frontend implementa contra contrato (mock corto)
+3. integracion y prueba E2E del slice
+
+## 6. Roadmap por fases (que se hace y por que)
+
+### Fase 0.0 - Scaffold del repositorio
+
+Que se hace:
+
+- crear estructura base de directorios del backend y frontend
+- agregar archivos mínimos para que el stack sea reconocido (package.json, pyproject.toml, main.py, etc.)
+- configurar docker-compose.yml con servicios básicos (postgres, backend, frontend)
+- crear .env.example con variables mínimas
+
+Por que se hace:
+
+- establece la forma del proyecto antes de levantar contenedores o instalar dependencias
+- clarifica dónde va cada cosa siguiendo la arquitectura modular
+
+Entregable visible:
+
+- estructura de directorios lista y reconocible
+- docker-compose.yml operativo (aunque servicios backend/frontend aún estén vacíos)
+- .env.example con variables de control
+
+Criterio de cierre:
+
+- `docker compose up` puede levantar postgres + nginx/proxy sin errores
+- directorios `backend/app/main.py` y `frontend/package.json` existen y son válidos
+- `docker compose ps` muestra 3 servicios "up"
+
+Checklist de scaffold:
+
+**Backend**:
+- [ ] `backend/pyproject.toml` con dependencias base (fastapi, sqlalchemy, alembic, etc)
+- [ ] `backend/alembic.ini` con config de migraciones
+- [ ] `backend/migrations/env.py` y `versions/` vacío
+- [ ] `backend/app/main.py` con aplicación vacía (uvicorn app)
+- [ ] `backend/app/core/config.py` con Settings
+- [ ] `backend/requirements.txt` generado desde pyproject.toml
+
+**Frontend**:
+- [ ] `frontend/package.json` con next, tailwind, typescript
+- [ ] `frontend/next.config.ts` con config base
+- [ ] `frontend/tsconfig.json`
+- [ ] `frontend/pages/index.tsx` o `app/page.tsx` (según App Router)
+
+**Raíz del proyecto**:
+- [ ] `.env.example` poblado con todas las variables de control
+- [ ] `docker-compose.yml` con servicios postgres, backend, frontend
+- [ ] `.gitignore` actualizado
+- [ ] `README.md` con instrucciones de arranque
 
 ### Fase 0 - Setup base
 
-Objetivo:
+Que se hace:
 
-- tener entorno reproducible y arquitectura inicial lista para iterar
+- estructura de proyecto
+- docker compose
+- conexion DB y migraciones
+- healthchecks
 
-Se implementa:
+Por que se hace:
 
-- Docker Compose para frontend, backend y PostgreSQL
-- FastAPI modular: auth, services, availability, appointments
-- SQLAlchemy async + Alembic
-- Next.js App Router + Tailwind + cliente API
-- healthchecks base y pipeline local minima
+- sin entorno reproducible todo lo demas falla o se retrasa
 
-Dependencias:
+Entregable visible:
 
-- ninguna
+- proyecto levanta y responde healthchecks
 
-Resultado visible:
+Criterio de cierre:
 
-- proyecto levanta con un comando
-- endpoints de health responden
-
-Riesgos y mitigacion:
-
-- riesgo: entorno no reproducible
-- mitigacion: .env.example, script de arranque y checklist de bootstrap
-
-Pruebas minimas:
-
-- smoke test de frontend/backend/db
-- migracion inicial aplicada en limpio
-
-Criterio de terminado:
-
-- stack local estable sin pasos ambiguos
-- readme de arranque validado
-
-Evidencia de cierre:
-
-- comando unico de levantamiento documentado
-- captura de healthchecks exitosos
+- stack local estable y migracion inicial aplicada
 
 ### Fase 1 - Autenticacion OTP
 
-Objetivo:
+Que se hace:
 
-- permitir login por OTP y emision de JWT para admin y cliente
+- request OTP y verify OTP
+- persistencia `otp_challenges` con hash, expiracion, intentos y single-use
+- emision JWT
+- proteccion inicial de rutas
 
-Se implementa:
+Por que se hace:
 
-- POST auth/otp/request con respuesta generica
-- POST auth/otp/verify con emision de JWT
-- persistencia otp_challenges con hash, expiracion, intentos y single-use
-- proteccion inicial de rutas por rol
-- frontend: solicitar codigo, verificar codigo, inicio/cierre de sesion
+- toda operacion del sistema depende de identidad y sesion valida
 
-Dependencias:
+Entregable visible:
 
-- fase 0
+- cliente y admin inician sesion sin password
 
-Resultado visible:
+Criterio de cierre:
 
-- admin y cliente pueden autenticarse sin password
-
-Riesgos y mitigacion:
-
-- riesgo: abuso de OTP
-- mitigacion: cooldown, rate limit por email/ip, intentos maximos
-
-Pruebas minimas:
-
-- OTP expira a 5 minutos
-- OTP no se reutiliza tras uso exitoso
-- token invalido no accede a rutas privadas
-
-Criterio de terminado:
-
-- auth OTP funcional end-to-end
-- JWT operativo en rutas protegidas
-
-Evidencia de cierre:
-
-- flujo manual completo request OTP -> verify OTP -> acceso protegido
-- pruebas automatizadas de contrato auth
+- OTP expira, no se reutiliza y JWT protege rutas privadas
 
 ### Fase 2 - Servicios
 
-Objetivo:
-
-- permitir que admin publique y mantenga servicios con duracion
-
-Se implementa:
+Que se hace:
 
 - CRUD admin de servicios
-- listado de servicios activos para cliente autenticado
-- validaciones de campos: nombre, descripcion, duration_minutes, is_active
-- frontend admin para alta/edicion/activacion
-- frontend cliente para listado de servicios
+- listado de servicios activos para cliente
 
-Dependencias:
+Por que se hace:
 
-- fase 1
+- sin servicios no existe disponibilidad ni reserva real
 
-Resultado visible:
+Entregable visible:
 
-- catalogo de servicios usable en cliente y admin
+- catalogo de servicios activo en panel admin y vista cliente
 
-Riesgos y mitigacion:
+Criterio de cierre:
 
-- riesgo: reglas de negocio difusas en duracion
-- mitigacion: validaciones explicitas en API y UI
-
-Pruebas minimas:
-
-- solo admin modifica servicios
-- cliente solo consulta activos
-
-Criterio de terminado:
-
-- CRUD estable y validado
-- contrato API de servicios congelado
-
-Evidencia de cierre:
-
-- demo funcional crear/editar/desactivar servicio
+- solo admin modifica, cliente solo consulta activos
 
 ### Fase 3 - Disponibilidad
 
-Objetivo:
+Que se hace:
 
-- generar y consultar bloques disponibles por servicio
+- reglas semanales por servicio
+- generacion de bloques por rango
+- consulta de bloques disponibles
 
-Se implementa:
+Por que se hace:
 
-- reglas de disponibilidad por servicio (dia y rango horario)
-- generador determinista de bloques futuros
-- estados de bloque: available, blocked, cancelled
-- endpoint de consulta de bloques por rango
-- frontend cliente para visualizar agenda disponible
+- el negocio necesita transformar reglas en horarios reservables reales
 
-Dependencias:
+Entregable visible:
 
-- fase 2
+- cliente visualiza agenda disponible por servicio
 
-Resultado visible:
+Criterio de cierre:
 
-- cliente ve horarios reales por servicio
-
-Riesgos y mitigacion:
-
-- riesgo: inconsistencias por timezone
-- mitigacion: timezone de negocio unica y UTC en persistencia
-
-Pruebas minimas:
-
-- no superposicion de bloques
-- respeto estricto de duration_minutes
-
-Criterio de terminado:
-
-- bloques consistentes y consultables por rango
-
-Evidencia de cierre:
-
-- caso de prueba semanal con bloques esperados
+- no hay superposicion y se respeta `duration_minutes`
 
 ### Fase 4 - Reservas
 
-Objetivo:
+Que se hace:
 
-- permitir reservar una cita sobre un bloque available sin doble reserva
+- reserva atomica de cita con transaccion y lock
+- snapshots de cliente en `appointments`
+- cambio de estado del bloque
 
-Se implementa:
+Por que se hace:
 
-- endpoint atomico de reserva con transaccion y lock
-- creacion de appointment con snapshots de cliente:
-  - client_name_snapshot
-  - client_email_snapshot
-  - client_phone_snapshot
-- estado inicial: pending_review
-- actualizacion del bloque reservado a estado no disponible
-- frontend cliente de confirmacion de reserva
+- la reserva es el flujo core del negocio y requiere integridad fuerte
 
-Dependencias:
+Entregable visible:
 
-- fase 3
+- cliente reserva y el bloque queda ocupado
 
-Resultado visible:
+Criterio de cierre:
 
-- reserva persistida y bloque ocupado
-
-Riesgos y mitigacion:
-
-- riesgo: doble reserva en concurrencia
-- mitigacion: lock pesimista o constraint unico transaccional
-
-Pruebas minimas:
-
-- prueba concurrente de doble intento sobre mismo bloque
-- persistencia correcta de snapshots
-
-Criterio de terminado:
-
-- no hay doble reserva bajo concurrencia basica
-- flujo E2E de reserva completo
-
-Evidencia de cierre:
-
-- test concurrente exitoso + demo funcional de reserva
+- no existe doble reserva bajo concurrencia basica
 
 ### Fase 5 - Panel admin de citas
 
-Objetivo:
+Que se hace:
 
-- dar control operativo al admin para confirmar o cancelar citas
+- listado de citas por estado/fecha
+- confirmar/cancelar cita
+- validacion de transiciones
 
-Se implementa:
+Por que se hace:
 
-- listado admin de citas por fecha y estado
-- acciones: confirmar y cancelar
-- regla consistente de impacto en bloque al cancelar
-- historial minimo de cambios de estado
-- frontend admin con bandeja de pendientes
+- el negocio necesita cerrar el ciclo operativo de atencion
 
-Dependencias:
+Entregable visible:
 
-- fase 4
+- admin gestiona citas pendientes
 
-Resultado visible:
+Criterio de cierre:
 
-- admin opera ciclo minimo de citas
-
-Riesgos y mitigacion:
-
-- riesgo: transiciones de estado inconsistentes
-- mitigacion: maquina de estados explicita y validada en backend
-
-Pruebas minimas:
-
-- solo pending_review pasa a confirmed o cancelled
-- usuario sin rol admin recibe 403
-
-Criterio de terminado:
-
-- transiciones validas y auditables
-
-Evidencia de cierre:
-
-- prueba E2E admin revisar -> confirmar/cancelar
+- transiciones validas y auditables (`pending_review -> confirmed/cancelled`)
 
 ### Fase 6 - Endurecimiento
 
-Objetivo:
+Que se hace:
 
-- reducir riesgo operativo de produccion sin ampliar alcance funcional
-
-Se implementa:
-
-- formato de error API uniforme
+- formato uniforme de errores API
 - logs estructurados con request_id
-- pruebas criticas: auth OTP, disponibilidad, reserva atomica, transiciones admin
-- hardening basico: CORS restringido, headers de seguridad, limites OTP
-- dockerfile de produccion y checklist de despliegue
+- pruebas criticas
+- hardening basico (CORS, headers, limites OTP)
+- checklist de deploy
 
-Dependencias:
+Por que se hace:
 
-- fases 0-5
+- salir a produccion sin esta fase aumenta mucho el riesgo operativo
 
-Resultado visible:
+Entregable visible:
 
-- MVP desplegable con riesgo tecnico controlado
+- MVP desplegable con riesgo controlado
 
-Riesgos y mitigacion:
+Criterio de cierre:
 
-- riesgo: incidentes por configuracion insegura
-- mitigacion: checklist de release y validaciones previas a deploy
+- smoke tests y pruebas criticas en verde
 
-Pruebas minimas:
+## 7. Primer plan de ejecucion (primeras 2 semanas)
 
-- smoke deploy + health ready
-- suite minima de regresion de flujos criticos
+Semana 1:
 
-Criterio de terminado:
+1. cerrar fase 0
+2. iniciar fase 1 (request OTP)
+3. completar verify OTP + JWT
 
-- checklist de release aprobado
-- pruebas criticas en verde
+Semana 2:
 
-Evidencia de cierre:
+1. cerrar fase 1
+2. cerrar fase 2
+3. iniciar fase 3 (reglas y primer endpoint de bloques)
 
-- acta de release con resultados de smoke y regresion
+Meta al final de semana 2:
 
-## 6. Vertical slices recomendados
+- login OTP funcionando
+- servicios administrables
+- primer corte de disponibilidad consultable
 
-1. Slice A - Login OTP completo
-2. Slice B - Crear servicio completo
-3. Slice C - Reservar cita completa
-4. Slice D - Operacion admin de citas
+## 8. Checklist para saber si puedes comenzar hoy
 
-## 7. Coordinacion backend y frontend
+- tienes herramientas instaladas (docker o python/node/postgres)
+- tienes `.env` con valores minimos
+- puedes levantar backend, frontend y DB
+- puedes correr migraciones sin error
+- healthchecks responden
+- tienes claro el orden: fase 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6
 
-Regla operativa por slice:
-
-1. backend define contrato minimo y ejemplos
-2. frontend arranca con mock corto y migra rapido a API real
-3. cierre conjunto con prueba E2E del slice en Docker
-
-Controles para evitar bloqueo:
-
-- congelar contrato por slice
-- no abrir mas de un slice critico en paralelo
-- definition of done compartida entre frontend/backend
-
-## 8. Backlog inicial priorizado
-
-1. Epica 1: fundaciones tecnicas
-2. Epica 2: autenticacion OTP/JWT
-3. Epica 3: gestion de servicios
-4. Epica 4: disponibilidad y bloques
-5. Epica 5: reserva de citas
-6. Epica 6: operacion admin y hardening
-
-## 9. Riesgos principales y mitigacion
-
-1. complejidad de disponibilidad y timezone
-2. doble reserva por concurrencia
-3. abuso de OTP
-4. desalineacion frontend/backend
-5. crecimiento de alcance en panel admin
-
-Mitigacion transversal:
-
-- contratos congelados por slice
-- pruebas de concurrencia tempranas
-- limites de OTP desde fase 1
-- demo y cierre formal por fase
-
-## 10. Fuera del MVP
-
-- multi-negocio o multi-sucursal
-- RBAC avanzado
-- pagos online y facturacion
-- notificaciones multicanal complejas
-- integraciones externas avanzadas
-- reporteria avanzada
-- app movil nativa
-
-## 11. Cierre ejecutivo
-
-Plan de ejecucion recomendado:
-
-1. roadmap por fases 0-6
-2. backlog inicial priorizado por epicas
-3. primeros 3 slices: login OTP, crear servicio, reservar cita
-4. exclusion explicita de alcance no MVP
+Si todos los puntos son verdaderos, ya puedes iniciar implementacion.

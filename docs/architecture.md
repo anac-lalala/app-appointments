@@ -104,12 +104,12 @@ Flujo recomendado:
 ```mermaid
 sequenceDiagram
     Usuario->>Frontend: Ingresa email
-    Frontend->>Backend: POST /auth/login { email }
+    Frontend->>Backend: POST /api/v1/auth/otp/request { email }
     Backend->>DB: Verifica usuario, genera OTP
     Backend->>Email: Envía OTP al correo
     Frontend->>Usuario: Muestra pantalla de código OTP
     Usuario->>Frontend: Ingresa OTP
-    Frontend->>Backend: POST /auth/verify-otp { email, otp }
+    Frontend->>Backend: POST /api/v1/auth/otp/verify { email, otp }
     Backend->>DB: Valida OTP y expiración
     Backend->>Frontend: { access_token }
     Frontend->>Usuario: Redirige al Dashboard
@@ -147,20 +147,20 @@ Ajustes mínimos sugeridos sobre UML:
 
 Ejemplo completo: login OTP, reserva y confirmación admin.
 
-1. Cliente en frontend solicita OTP (`/login`).
-2. Endpoint `POST /auth/otp/request` recibe email.
+1. Cliente en frontend solicita OTP (`/api/v1/auth/otp/request`).
+2. Endpoint `POST /api/v1/auth/otp/request` recibe email.
 3. Caso de uso `RequestOtpLogin` genera OTP con expiración y lo persiste (`otp_challenges`).
 4. Infraestructura de email envía código.
-5. Cliente envía OTP (`POST /auth/otp/verify`).
+5. Cliente envía OTP (`POST /api/v1/auth/otp/verify`).
 6. Caso de uso `VerifyOtpLogin` valida OTP, crea sesión y retorna credenciales.
-7. Cliente consulta servicios (`GET /services`).
+7. Cliente consulta servicios (`GET /api/v1/services`).
 8. Endpoint llama `ListActiveServices` y retorna catálogo.
-9. Cliente consulta horarios (`GET /services/{id}/available-slots?date=...`).
+9. Cliente consulta horarios (`GET /api/v1/services/{service_id}/time-blocks?date=...`).
 10. Caso de uso `ListAvailableTimeBlocks` obtiene bloques `available` y excluye bloques con cita activa.
-11. Cliente reserva (`POST /appointments`).
+11. Cliente reserva (`POST /api/v1/appointments`).
 12. Caso de uso `BookAppointment` valida bloque, crea `Appointment` con snapshots (`name/email/phone`) y marca ocupación lógica vía cita activa.
-13. Admin consulta citas (`GET /admin/appointments?status=pending_review`).
-14. Admin confirma (`PATCH /admin/appointments/{id}/confirm`).
+13. Admin consulta citas (`GET /api/v1/appointments?status=pending_review` - requires admin role).
+14. Admin confirma (`PATCH /api/v1/appointments/{appointment_id}/confirm` - requires admin role).
 15. Caso de uso `ConfirmAppointment` cambia estado a `confirmed`, setea `confirmed_at`, persiste.
 
 Capas implicadas en cada operación:

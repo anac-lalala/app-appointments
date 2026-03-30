@@ -46,19 +46,19 @@ Relacion de negocio:
 
 ### Servicios
 - `GET /api/v1/services`
-- `POST /api/v1/admin/services`
-- `PATCH /api/v1/admin/services/{service_id}`
+- `POST /api/v1/services` (requires admin role)
+- `PATCH /api/v1/services/{service_id}` (requires admin role)
 
 ### Disponibilidad
 - `GET /api/v1/services/{service_id}/time-blocks`
-- `PUT /api/v1/admin/services/{service_id}/availability-rules`
+- `PUT /api/v1/services/{service_id}/availability-rules` (requires admin role)
 
 ### Citas
 - `POST /api/v1/appointments`
 - `GET /api/v1/appointments/me`
-- `GET /api/v1/admin/appointments`
-- `PATCH /api/v1/admin/appointments/{appointment_id}/confirm`
-- `PATCH /api/v1/admin/appointments/{appointment_id}/cancel`
+- `GET /api/v1/appointments` (requires admin role)
+- `PATCH /api/v1/appointments/{appointment_id}/confirm` (requires admin role)
+- `PATCH /api/v1/appointments/{appointment_id}/cancel` (requires admin role)
 
 ## 4. Request/response de endpoints criticos
 
@@ -215,7 +215,7 @@ Errores:
 ## 4.6 Confirm appointment (admin)
 
 Metodo y path:
-- `PATCH /api/v1/admin/appointments/{appointment_id}/confirm`
+- `PATCH /api/v1/appointments/{appointment_id}/confirm` (requires admin role)
 
 Request:
 ```json
@@ -245,7 +245,7 @@ Errores:
 ## 4.7 Cancel appointment (admin)
 
 Metodo y path:
-- `PATCH /api/v1/admin/appointments/{appointment_id}/cancel`
+- `PATCH /api/v1/appointments/{appointment_id}/cancel` (requires admin role)
 
 Request:
 ```json
