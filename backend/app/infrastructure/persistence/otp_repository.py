@@ -17,33 +17,65 @@ from app.infrastructure.persistence.models import Client
 from app.infrastructure.persistence.models import OtpChallenge
 
 
+def _parse_rate_limit(limit_value: str, fallback_count: int, fallback_window: timedelta) -> tuple[int, timedelta]:
+    """Parse rate limits like '10/15m' or '5/h'."""
+    try:
+        count_part, window_part = limit_value.split("/", maxsplit=1)
+        count = int(count_part)
+
+        if window_part.endswith("m"):
+            minutes = int(window_part[:-1])
+            return count, timedelta(minutes=minutes)
+
+        if window_part == "h":
+            return count, timedelta(hours=1)
+
+        if window_part.endswith("h"):
+            hours = int(window_part[:-1])
+            return count, timedelta(hours=hours)
+    except (ValueError, AttributeError):
+        pass
+
+    return fallback_count, fallback_window
+
+
 class OtpRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
     async def is_rate_limited_by_email(self, email: str) -> bool:
         now = datetime.now(timezone.utc)
-        window_start = now - timedelta(hours=1)
+        max_requests, window = _parse_rate_limit(
+            settings.OTP_REQUEST_RATE_LIMIT_PER_EMAIL,
+            fallback_count=5,
+            fallback_window=timedelta(hours=1),
+        )
+        window_start = now - window
 
         query = select(func.count()).select_from(OtpChallenge).where(
             and_(OtpChallenge.email == email, OtpChallenge.created_at >= window_start)
         )
         count = (await self.session.execute(query)).scalar_one()
-        return count >= 5
+        return count >= max_requests
 
     async def is_rate_limited_by_ip(self, ip: str | None) -> bool:
         if not ip:
             return False
 
         now = datetime.now(timezone.utc)
-        window_start = now - timedelta(minutes=15)
+        max_requests, window = _parse_rate_limit(
+            settings.OTP_REQUEST_RATE_LIMIT_PER_IP,
+            fallback_count=10,
+            fallback_window=timedelta(minutes=15),
+        )
+        window_start = now - window
         ip_hash = hashlib.sha256(ip.encode("utf-8")).hexdigest()
 
         query = select(func.count()).select_from(OtpChallenge).where(
             and_(OtpChallenge.requested_ip_hash == ip_hash, OtpChallenge.created_at >= window_start)
         )
         count = (await self.session.execute(query)).scalar_one()
-        return count >= 10
+        return count >= max_requests
 
     async def is_cooldown_active(self, email: str) -> bool:
         latest_query = (

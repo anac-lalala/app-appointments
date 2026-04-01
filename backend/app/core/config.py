@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     OTP_REQUEST_RATE_LIMIT_PER_IP: str = "10/15m"
     OTP_REQUEST_RATE_LIMIT_PER_EMAIL: str = "5/h"
     OTP_COOLDOWN_SECONDS: int = 60
+    OTP_DEV_LOG_CODE: bool = False
     
     # SMTP (for OTP delivery)
     SMTP_HOST: str = "smtp.gmail.com"

@@ -1,5 +1,11 @@
+import logging
+
+from app.core.config import settings
 from app.infrastructure.persistence.otp_repository import OtpRepository
 from app.infrastructure.security.otp_service import OtpService
+
+
+logger = logging.getLogger(__name__)
 
 
 class RequestOtpLoginUseCase:
@@ -20,6 +26,9 @@ class RequestOtpLoginUseCase:
         await self.repository.invalidate_active_challenges(email)
         otp_code = self.otp_service.generate_code()
         otp_hash = self.otp_service.hash_code(otp_code)
+
+        if settings.OTP_DEV_LOG_CODE and settings.ENVIRONMENT != "production":
+            logger.warning("DEV OTP generated for %s: %s", email, otp_code)
 
         await self.repository.create_challenge(email=email, otp_hash=otp_hash, requested_ip=requested_ip)
 
