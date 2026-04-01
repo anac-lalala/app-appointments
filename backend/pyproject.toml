@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "citas-app-backend"
+version = "0.1.0"
+description = "MVP backend for appointment management system"
+authors = [
+    {name = "Development Team", email = "dev@example.com"}
+]
+dependencies = [
+    "fastapi==0.104.1",
+    "uvicorn[standard]==0.24.0",
+    "pydantic==2.5.0",
+    "pydantic-settings==2.1.0",
+    "sqlalchemy==2.0.23",
+    "alembic==1.13.1",
+    "asyncpg==0.29.0",
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "python-multipart==0.0.6",
+    "aiosmtplib==3.0.1",
+    "python-dotenv==1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.3",
+    "pytest-asyncio==0.22.1",
+    "black==23.12.0",
+    "flake8==6.1.0",
+    "mypy==1.7.1",
+    "isort==5.13.2",
+]
+
+[tool.setuptools]
+packages = ["app"]
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_configs = true
+
+[tool.isort]
+profile = "black"
+line_length = 100

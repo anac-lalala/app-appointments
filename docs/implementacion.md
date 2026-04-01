@@ -170,6 +170,18 @@ Regla de coordinacion por slice:
 2. frontend implementa contra contrato (mock corto)
 3. integracion y prueba E2E del slice
 
+Orden operativo obligatorio en cada fase:
+
+1. desarrollo backend (endpoint + logica de negocio + validacion Postman)
+2. integracion frontend (UI + consumo API real)
+3. verificacion Docker (operacion y smoke test)
+
+Regla Docker:
+
+- en fases tempranas se puede usar solo PostgreSQL en contenedor
+- backend y frontend se desarrollan localmente primero
+- Docker completo (backend + frontend + db) se valida al cierre de fase o en fase 6
+
 ## 6. Roadmap por fases (que se hace y por que)
 
 ### Fase 0.0 - Scaffold del repositorio
@@ -240,6 +252,32 @@ Entregable visible:
 Criterio de cierre:
 
 - stack local estable y migracion inicial aplicada
+
+### Fase 0.5 - Diseno de schema y construccion de base de datos
+
+Que se hace:
+
+- diseno de esquema relacional a partir de `docs/database.md`
+- definicion de tablas, foreign keys, constraints e indices
+- creacion de primera migracion Alembic
+- aplicacion de migracion en entorno local
+
+Por que se hace:
+
+- sin una base consistente, los endpoints no pueden validar reglas reales
+- reduce retrabajo al fijar integridad y concurrencia antes de la API completa
+
+Entregable visible:
+
+- schema inicial creado en PostgreSQL
+- migracion versionada en `backend/migrations/versions`
+- constraints criticos activos (status, ranges, unicidad)
+
+Criterio de cierre:
+
+- `alembic upgrade head` ejecuta sin error
+- tablas core (`services`, `service_time_blocks`, `appointments`, `otp_challenges`) existen
+- indice unico parcial de cita activa por bloque creado
 
 ### Fase 1 - Autenticacion OTP
 
