@@ -4,14 +4,28 @@ Application configuration.
 Reads from environment variables defined in .env file.
 Non-negotiable control values per docs/implementacion.md section 4.
 """
+from pathlib import Path
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_CORE_DIR = Path(__file__).resolve().parent
+_APP_DIR = _CORE_DIR.parent
+_BACKEND_DIR = _APP_DIR.parent
+_REPO_ROOT_DIR = _BACKEND_DIR.parent
 
 
 class Settings(BaseSettings):
     """Application settings with validation."""
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(
+        env_file=(
+            str(_BACKEND_DIR / ".env"),
+            str(_REPO_ROOT_DIR / ".env"),
+            ".env",
+        ),
+        case_sensitive=True,
+    )
     
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://citas:devpass@localhost:5432/citas"
