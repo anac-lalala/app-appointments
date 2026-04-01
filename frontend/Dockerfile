@@ -2,20 +2,22 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+RUN corepack enable
+
 # Copy package files
-COPY package*.json ./
+COPY package.json ./
 
 # Install dependencies
-RUN npm install
+RUN pnpm install
 
 # Copy application
 COPY . .
 
 # Build Next.js
-RUN npm run build
+RUN pnpm build
 
 # Expose port
 EXPOSE 3000
 
 # Start Next.js
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]

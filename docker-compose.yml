@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   db:
     image: postgres:14-alpine
@@ -71,7 +69,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    command: npm run dev
+    command: pnpm dev
     networks:
       - citas_network
 

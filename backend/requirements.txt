@@ -21,7 +21,7 @@ aiosmtplib==3.0.1
 # Utilities
 python-dotenv==1.0.0
 pytest==7.4.3
-pytest-asyncio==0.22.1
+pytest-asyncio==0.23.8
 
 # Development
 black==23.12.0
