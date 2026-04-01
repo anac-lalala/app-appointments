@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.infrastructure.db import check_db_health
+from app.presentation.api.routes.auth import router as auth_router
 
 # Dependency injection / startup
 @asynccontextmanager
@@ -26,6 +27,8 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+app.include_router(auth_router, prefix="/api/v1")
 
 # CORS middleware
 app.add_middleware(
